@@ -1,4 +1,26 @@
-Data
 .ipynb_checkpoints
 playertracking_data_all.csv
 shotchart_data_all.csv
+2024-25_advanced_box_data.csv
+2024-25_shotchart_data.csv
+2024-25_box_data.csv
+2024-25_team_advanced.csv
+2024-25_log.txt
+2024-25_play_by_play.csv
+advanced_box_data_all.csv
+2024-25_playertracking_data.csv
+box_data_all.csv
+checked_games2024-25.txt
+Methodology_results_final.ipynb
+Methodology_results.ipynb
+Research Paper.pdf
+add_games.py
+Cluster_updates.ipynb
+Data
+log.txt
+__pycache__
+model.pth
+k_means_model.pkl
+NN_model.pth
+X.pkl
+pca_model.pkl
