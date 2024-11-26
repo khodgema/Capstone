@@ -1,4 +1,4 @@
-from nba_api.stats.endpoints import ShotChartDetail, LeagueGameLog, BoxScorePlayerTrackV3, BoxScoreAdvancedV3, playbyplayv3, BoxScoreTraditionalV3, BoxScoreAdvancedV2, teamgamelog
+from nba_api.stats.endpoints import ShotChartDetail, LeagueGameLog, BoxScorePlayerTrackV3, BoxScoreAdvancedV3, playbyplayv3, BoxScoreTraditionalV3, TeamGameLogs, BoxScoreAdvancedV2, teamgamelog
 import pandas as pd
 import time
 import os
@@ -55,6 +55,7 @@ def get_data(game_ids):
     advanced_data = []
     box_data = []
     team_advanced_data = []
+    team_game_logs_data = []
     
     max_retries = 4
     initial_delay = 32.0
@@ -88,6 +89,10 @@ def get_data(game_ids):
     @retry_decorator(max_retries=max_retries, initial_delay=initial_delay)
     def fetch_advanced_boxscore_team(game_id):
         return BoxScoreAdvancedV2(game_id=game_id).get_data_frames()[1]
+
+    @retry_decorator(max_retries=max_retries, initial_delay=initial_delay)
+    def fetch_team_game_logs(game_id):
+        return TeamGameLogs(game_id=game_id).get_data_frames()[0]
 
     # keep track of missed games, remove from list and dont report as fetched
     game_list = game_ids.copy()
@@ -167,6 +172,18 @@ def get_data(game_ids):
                     game_list.remove(game_id)
                 time.sleep(32)
 
+            # Team Game Logs
+            try:
+                team_game_logs = fetch_team_game_logs(game_id=game_id)
+                team_game_logs['GAME_ID'] = game_id
+                team_game_logs_data.append(team_game_logs)
+            except Exception as e:
+                with open(log_file, 'a') as f:
+                    f.write(f"Failed team_game_logs for {game_id}: {e}\n")
+                if game_id in game_list:
+                    game_list.remove(game_id)
+                time.sleep(32)
+
 
             # Rate limiting
             time.sleep(0.7)
@@ -182,8 +199,9 @@ def get_data(game_ids):
     play_by_play_df = pd.concat(play_by_play_data, ignore_index=True) if play_by_play_data else pd.DataFrame()
     traditional_box_df = pd.concat(box_data, ignore_index=True) if box_data else pd.DataFrame()
     team_advanced_df = pd.concat(team_advanced_data,ignore_index=True) if team_advanced_data else pd.DataFrame()
+    team_game_log_df = pd.concat(team_game_logs_data,ignore_index=True) if team_game_logs_data else pd.DataFrame()
 
-    return shotchart_df, playertracking_df, advanced_df, play_by_play_df, traditional_box_df, team_advanced_df, game_list
+    return shotchart_df, playertracking_df, advanced_df, play_by_play_df, traditional_box_df, team_advanced_df, game_list, team_game_log_df
 
 # Check if files exist, create or update
 def update_csv(file_path, new_df):
@@ -201,9 +219,9 @@ def update_csv(file_path, new_df):
 # Retrieve the current NBA season.
 season =  get_current_season()
 
-data_path = "/data/NBA/byYearData"
-log_path = "/data/NBA/logs"
-finished_data_path = "/data/NBA"
+data_path = "/data/NBA/byYearData/"
+log_path = "/data/NBA/logs/"
+finished_data_path = "/data/NBA/combinedData/"
 
 #get logs
 log_file = f"{data_path}{season}_log.txt"
@@ -227,7 +245,7 @@ game_ids  = get_game_ids(season = season)
 filtered_game_ids  = [game_id for game_id in game_ids if game_id not in checked_games]
 
 #get data for new games 
-shotchart_df, playertracking_df,advanced_box_df,play_by_play_df,traditional_box_df, team_advanced_df, fetched_games = get_data(filtered_game_ids)
+shotchart_df, playertracking_df,advanced_box_df,play_by_play_df,traditional_box_df, team_advanced_df, fetched_games, team_game_log_df = get_data(filtered_game_ids)
 
 # Append new checked games to the txt file
 with open(checked_games_file, 'a') as f:
@@ -241,6 +259,7 @@ advanced_box_file = f"{data_path}{season}_advanced_box_data.csv"
 play_by_play_file = f'{data_path}{season}_play_by_play.csv'
 traditional_box_file = f"{data_path}{season}_box_data.csv"
 team_advanced_box_file = f"{data_path}{season}_team_advanced.csv"
+team_game_logs_file = f"{data_path}{season}_team_game_logs.csv"
 
 
 
@@ -251,6 +270,7 @@ update_csv(advanced_box_file, advanced_box_df)
 update_csv(play_by_play_file, play_by_play_df)
 update_csv(traditional_box_file, traditional_box_df)
 update_csv(team_advanced_box_file, team_advanced_df)
+update_csv(team_game_logs_file,team_game_log_df)
 
 ##### Get the schedule and find the next games to predict
 url = "https://stats.nba.com/stats/scheduleleaguev2"
@@ -314,7 +334,8 @@ data_types = {
     '_advanced_box_data.csv': 'advanced_box_df_all',
     '_play_by_play.csv': 'play_by_play_df_all',
     '_box_data.csv': 'traditional_box_df_all',
-    '_team_advanced.csv': 'team_advanced_df_all'
+    '_team_advanced.csv': 'team_advanced_df_all',
+    '_team_game_logs.csv': 'team_game_logs_df_all'
 }
 
 dataframes = {value: pd.DataFrame() for value in data_types.values()}
@@ -333,6 +354,7 @@ advanced_box_df_all = dataframes['advanced_box_df_all']
 play_by_play_df_all = dataframes['play_by_play_df_all']
 traditional_box_df_all = dataframes['traditional_box_df_all']
 team_advanced_df_all = dataframes['team_advanced_df_all']
+team_game_logs_all = dataframes['team_game_logs_df_all']
 
 for file_suffix, df in data_types.items():
     path = f"{finished_data_path}combined{file_suffix}"
