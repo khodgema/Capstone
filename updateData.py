@@ -203,6 +203,7 @@ season =  get_current_season()
 
 data_path = "/data/NBA/byYearData"
 log_path = "/data/NBA/logs"
+finished_data_path = "/data/NBA"
 
 #get logs
 log_file = f"{data_path}{season}_log.txt"
@@ -305,6 +306,38 @@ if response.status_code == 200:
 else:
     with open(log_file, 'a') as f:
         f.write(f"Sechdule Request failed with status code: {response.status_code}")
+
+# Combine data from all seasons into dataframes for analysis
+data_types = {
+    '_shotchart_data.csv': 'shotchart_df_all',
+    '_playertracking_data.csv': 'playertracking_df_all',
+    '_advanced_box_data.csv': 'advanced_box_df_all',
+    '_play_by_play.csv': 'play_by_play_df_all',
+    '_box_data.csv': 'traditional_box_df_all',
+    '_team_advanced.csv': 'team_advanced_df_all'
+}
+
+dataframes = {value: pd.DataFrame() for value in data_types.values()}
+season_files = [f for f in os.listdir(data_path) if any(f.endswith(key) for key in data_types)]
+
+for season_file in season_files:
+    for file_suffix, df_name in data_types.items():
+        if season_file.endswith(file_suffix):
+            file_path = os.path.join(data_path, season_file)
+            temp_df = pd.read_csv(file_path)
+            dataframes[df_name] = pd.concat([dataframes[df_name], temp_df], ignore_index=True)
+
+shotchart_df_all = dataframes['shotchart_df_all']
+playertracking_df_all = dataframes['playertracking_df_all']
+advanced_box_df_all = dataframes['advanced_box_df_all']
+play_by_play_df_all = dataframes['play_by_play_df_all']
+traditional_box_df_all = dataframes['traditional_box_df_all']
+team_advanced_df_all = dataframes['team_advanced_df_all']
+
+for file_suffix, df in data_types.items():
+    path = f"{finished_data_path}combined{file_suffix}"
+    update_csv(path,dataframes[df]) 
+
 
 #log update
 with open(log_file, 'a') as f:
