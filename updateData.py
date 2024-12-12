@@ -1,4 +1,4 @@
-from nba_api.stats.endpoints import ShotChartDetail, LeagueGameLog, BoxScorePlayerTrackV3, BoxScoreAdvancedV3, playbyplayv3, BoxScoreTraditionalV3, TeamGameLogs, BoxScoreAdvancedV2, teamgamelog
+from nba_api.stats.endpoints import teams, ShotChartDetail, LeagueGameLog, BoxScorePlayerTrackV3, BoxScoreAdvancedV3, playbyplayv3, BoxScoreTraditionalV3, TeamGameLogs, BoxScoreAdvancedV2, teamgamelog
 import pandas as pd
 import time
 import os
@@ -48,7 +48,7 @@ def retry_decorator(max_retries: int = 3, initial_delay: float = 32.0, backoff_f
     return decorator
 
 # Get data from the enpoints for a list of game ids 
-def get_data(game_ids):
+def get_data(game_ids, nba_teams):
     play_by_play_data = []
     shotchart_data = []
     playertracking_data = []
@@ -91,8 +91,8 @@ def get_data(game_ids):
         return BoxScoreAdvancedV2(game_id=game_id).get_data_frames()[1]
 
     @retry_decorator(max_retries=max_retries, initial_delay=initial_delay)
-    def fetch_team_game_logs(game_id):
-        return TeamGameLogs(game_id=game_id).get_data_frames()[0]
+    def fetch_team_game_logs(team_id):
+        return TeamGameLogs( team_id_nullable= team_id , season_nullable=season).get_data_frames()[0]
 
     # keep track of missed games, remove from list and dont report as fetched
     game_list = game_ids.copy()
@@ -172,18 +172,6 @@ def get_data(game_ids):
                     game_list.remove(game_id)
                 time.sleep(32)
 
-            # Team Game Logs
-            try:
-                team_game_logs = fetch_team_game_logs(game_id=game_id)
-                team_game_logs['GAME_ID'] = game_id
-                team_game_logs_data.append(team_game_logs)
-            except Exception as e:
-                with open(log_file, 'a') as f:
-                    f.write(f"Failed team_game_logs for {game_id}: {e}\n")
-                if game_id in game_list:
-                    game_list.remove(game_id)
-                time.sleep(32)
-
 
             # Rate limiting
             time.sleep(0.7)
@@ -191,6 +179,21 @@ def get_data(game_ids):
         except Exception as e:
             print(f"Unexpected error for game {game_id}: {e}")
             time.sleep(32)
+
+    for team in nba_teams:
+        try:
+            game_log = fetch_team_game_logs(team = team['TEAM_ID'])
+            team_game_logs_data.append(game_log)
+        except Exception as e:
+            with open(log_file, 'a') as f:
+                f.write(f"Failed team_game_logs for {team['TEAM_NAME']}: {e}\n")
+            if game_id in game_list:
+                game_list.remove(game_id)
+            time.sleep(32)
+        # Rate limiting
+            time.sleep(0.7)
+
+        
 
     # Concat dataframes only if data exists
     shotchart_df = pd.concat(shotchart_data, ignore_index=True) if shotchart_data else pd.DataFrame()
@@ -244,8 +247,11 @@ game_ids  = get_game_ids(season = season)
 # Filter out games that have already been checked
 filtered_game_ids  = [game_id for game_id in game_ids if game_id not in checked_games]
 
-#get data for new games 
-shotchart_df, playertracking_df,advanced_box_df,play_by_play_df,traditional_box_df, team_advanced_df, fetched_games, team_game_log_df = get_data(filtered_game_ids)
+# Get teams 
+nba_teams = teams.get_teams()
+
+# get data for new games 
+shotchart_df, playertracking_df,advanced_box_df,play_by_play_df,traditional_box_df, team_advanced_df, fetched_games, team_game_log_df = get_data(filtered_game_ids, nba_teams)
 
 # Append new checked games to the txt file
 with open(checked_games_file, 'a') as f:
