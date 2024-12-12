@@ -187,12 +187,12 @@ def get_data(game_ids, nba_teams):
             team_game_logs_data.append(game_log)
         except Exception as e:
             with open(log_file, 'a') as f:
-                f.write(f"Failed team_game_logs for {team['TEAM_NAME']}: {e}\n")
+                f.write(f"Failed team_game_logs for {team['TEAM_ID']}: {e}\n")
             if game_id in game_list:
                 game_list.remove(game_id)
             time.sleep(32)
         # Rate limiting
-            time.sleep(0.7)
+            time.sleep(2)
 
         
 
