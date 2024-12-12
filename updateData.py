@@ -1,4 +1,5 @@
-from nba_api.stats.endpoints import teams, ShotChartDetail, LeagueGameLog, BoxScorePlayerTrackV3, BoxScoreAdvancedV3, playbyplayv3, BoxScoreTraditionalV3, TeamGameLogs, BoxScoreAdvancedV2, teamgamelog
+from nba_api.stats.endpoints import  ShotChartDetail, LeagueGameLog, BoxScorePlayerTrackV3, BoxScoreAdvancedV3, playbyplayv3, BoxScoreTraditionalV3, TeamGameLogs, BoxScoreAdvancedV2, teamgamelog
+from nba_api.stats.static import teams
 import pandas as pd
 import time
 import os
