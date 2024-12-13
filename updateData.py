@@ -181,13 +181,13 @@ def get_data(game_ids, nba_teams):
             print(f"Unexpected error for game {game_id}: {e}")
             time.sleep(32)
 
-    for team in nba_teams:
+    for team in nba_teams['id']:
         try:
-            game_log = fetch_team_game_logs(team = team['TEAM_ID'])
+            game_log = fetch_team_game_logs(team = team)
             team_game_logs_data.append(game_log)
         except Exception as e:
             with open(log_file, 'a') as f:
-                f.write(f"Failed team_game_logs for {team['TEAM_ID']}: {e}\n")
+                f.write(f"Failed team_game_logs for {team}: {e}\n")
             if game_id in game_list:
                 game_list.remove(game_id)
             time.sleep(32)
@@ -249,7 +249,7 @@ game_ids  = get_game_ids(season = season)
 filtered_game_ids  = [game_id for game_id in game_ids if game_id not in checked_games]
 
 # Get teams 
-nba_teams = teams.get_teams()
+nba_teams = pd.DataFrame(teams.get_teams())
 
 # get data for new games 
 shotchart_df, playertracking_df,advanced_box_df,play_by_play_df,traditional_box_df, team_advanced_df, fetched_games, team_game_log_df = get_data(filtered_game_ids, nba_teams)
